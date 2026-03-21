@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 180px; height: 44px; overflow: hidden; background: transparent; }
+
+.pill {
+  width: 180px; height: 44px;
+  background: #17171c;
+  border: 0.5px solid rgba(255,255,255,0.16);
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px 0 13px;
+  -webkit-app-region: drag;
+}
+.left {
+  display: flex; align-items: center; gap: 9px;
+  -webkit-app-region: no-drag;
+  pointer-events: none;
+}
+.dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #4a4a58; flex-shrink: 0;
+  transition: background 0.3s;
+}
+.dot.running { background: #1D9E75; }
+.dot.warn    { background: #BA7517; }
+.dot.done    { background: #E24B4A; animation: blink 0.8s ease infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+.time {
+  font-family: 'Consolas', monospace;
+  font-size: 13px; font-weight: 500;
+  color: #ededea; letter-spacing: 0.02em;
+  min-width: 52px;
+}
+.restore {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  border: 0.5px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: #8e8e99;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  -webkit-app-region: no-drag;
+  transition: all 0.15s;
+}
+.restore:hover { background: rgba(29,158,117,0.25); color: #1D9E75; border-color: #1D9E75; }
+</style>
+</head>
+<body>
+<div class="pill">
+  <div class="left">
+    <div class="dot" id="dot"></div>
+    <span class="time" id="timeEl">--:--</span>
+  </div>
+  <button class="restore" id="btn">↑</button>
+</div>
+<script>
+  document.getElementById('btn').addEventListener('click', () => window.fd.restoreApp());
+
+  window.fd.onMiniInit(({ timerText, running }) => {
+    document.getElementById('timeEl').textContent = timerText || '--:--';
+    setDot(running ? 'running' : 'idle');
+  });
+
+  window.fd.onTimerTick(({ text, state }) => {
+    document.getElementById('timeEl').textContent = text || '--:--';
+    setDot(state);
+  });
+
+  function setDot(s) {
+    const d = document.getElementById('dot');
+    d.className = 'dot';
+    if (s === 'running') d.classList.add('running');
+    else if (s === 'warn') d.classList.add('warn');
+    else if (s === 'done') d.classList.add('done');
+  }
+</script>
+</body>
+</html>

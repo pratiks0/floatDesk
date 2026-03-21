@@ -1,0 +1,48 @@
+{
+  "name": "floatdesk",
+  "version": "2.0.0",
+  "description": "Compact always-on-top floating timer and sticky notes for Windows",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --x64",
+    "build:portable": "electron-builder --win portable --x64",
+    "build:installer": "electron-builder --win nsis --x64"
+  },
+  "build": {
+    "appId": "com.floatdesk.app",
+    "productName": "FloatDesk",
+    "copyright": "FloatDesk 2025",
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "main.js",
+      "index.html",
+      "mini.html",
+      "assets/**/*"
+    ],
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        { "target": "portable", "arch": ["x64"] },
+        { "target": "nsis",     "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "FloatDesk"
+    },
+    "portable": {
+      "artifactName": "FloatDesk-Portable.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^24.13.0"
+  }
+}
