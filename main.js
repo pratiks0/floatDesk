@@ -1,38 +1,51 @@
 const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
+const fs   = require('fs');
+const os   = require('os');
 
 let win     = null;
 let miniWin = null;
 let tray    = null;
 
-// Base dimensions (100% zoom)
 const BASE_W = 320;
 const BASE_H = 480;
 const MINI_W = 180;
 const MINI_H = 44;
 
-function defaultPos(w, h) {
-  const wa = screen.getPrimaryDisplay().workAreaSize;
-  return { x: wa.width - w - 20, y: wa.height - h - 20 };
+const NOTES_FILE = path.join(os.homedir(), 'floatdesk-notes.json');
+
+// ── Notes I/O (main process — full fs access) ────────────
+function readNotes() {
+  try {
+    if (fs.existsSync(NOTES_FILE))
+      return JSON.parse(fs.readFileSync(NOTES_FILE, 'utf8'));
+  } catch(e) {}
+  return null;
 }
+
+function writeNotes(data) {
+  try { fs.writeFileSync(NOTES_FILE, JSON.stringify(data, null, 2), 'utf8'); }
+  catch(e) { console.error('[FloatDesk] save failed:', e.message); }
+}
+
+// ── Window helpers ───────────────────────────────────────
+function workArea() { return screen.getPrimaryDisplay().workAreaSize; }
 
 function createMainWindow(w, h) {
   if (win && !win.isDestroyed()) return;
-  w = w || BASE_W;
-  h = h || BASE_H;
-  const pos = defaultPos(w, h);
+  w = w || BASE_W; h = h || BASE_H;
+  const wa = workArea();
   win = new BrowserWindow({
-    width: w, height: h, x: pos.x, y: pos.y,
-    minWidth: 240, minHeight: 360,
-    frame: false,
-    transparent: true,
-    alwaysOnTop: true,
-    resizable: false,
-    skipTaskbar: true,
-    hasShadow: false,
+    width: w, height: h,
+    x: wa.width  - w - 20,
+    y: wa.height - h - 20,
+    frame: false, transparent: true,
+    alwaysOnTop: true, resizable: false,
+    skipTaskbar: true, hasShadow: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: false,            // lets preload use require() for IPC only
       preload: path.join(__dirname, 'preload.js'),
     },
   });
@@ -51,6 +64,7 @@ function createMiniWindow(x, y) {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: false,
       preload: path.join(__dirname, 'preload-mini.js'),
     },
   });
@@ -59,30 +73,32 @@ function createMiniWindow(x, y) {
   miniWin.on('closed', () => { miniWin = null; });
 }
 
-function createTray() {
-  // Empty 1x1 transparent icon — safe fallback on all Windows builds
-  tray = new Tray(nativeImage.createEmpty());
-  tray.setToolTip('FloatDesk');
-  tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Show FloatDesk', click() { showMain(); } },
-    { label: 'Hide to Tray',   click() { win && win.hide(); } },
-    { type: 'separator' },
-    { label: 'Quit',           click() { app.quit(); } },
-  ]));
-  tray.on('click', () => win && win.isVisible() ? win.hide() : showMain());
-}
-
 function showMain() {
   if (!win || win.isDestroyed()) createMainWindow();
   else { win.show(); win.focus(); }
   if (miniWin && !miniWin.isDestroyed()) miniWin.close();
 }
 
+function createTray() {
+  tray = new Tray(nativeImage.createEmpty());
+  tray.setToolTip('FloatDesk');
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Show FloatDesk', click: showMain },
+    { label: 'Hide to Tray',   click: () => win && win.hide() },
+    { type: 'separator' },
+    { label: 'Quit',           click: () => app.quit() },
+  ]));
+  tray.on('click', () => win && win.isVisible() ? win.hide() : showMain());
+}
+
 app.whenReady().then(() => { createMainWindow(); createTray(); });
 app.on('window-all-closed', () => { /* stay in tray */ });
 
-// ── IPC ──────────────────────────────────────────────
-ipcMain.on('hide-window', () => { win && win.hide(); });
+// ── IPC handlers ─────────────────────────────────────────
+ipcMain.handle('load-notes', () => readNotes());
+ipcMain.on('save-notes', (_, data) => writeNotes(data));
+
+ipcMain.on('hide-window', () => win && win.hide());
 
 ipcMain.on('resize-window', (_, { width, height }) => {
   if (!win || win.isDestroyed()) return;
@@ -102,9 +118,7 @@ ipcMain.on('minimize-to-mini', (_, payload) => {
   });
 });
 
-ipcMain.on('restore-from-mini', () => {
-  showMain();
-});
+ipcMain.on('restore-from-mini', () => showMain());
 
 ipcMain.on('timer-tick', (_, data) => {
   if (miniWin && !miniWin.isDestroyed())
