@@ -8,11 +8,13 @@ Perfect for **deep work, DSA prep, interviews, and daily planning**.
 
 ## 🖼️ Demo
 
-### 📝 Notes Panel
-![Notes Panel](./assets/Screenshot 2026-03-22 144644.png)
-
 ### ⏱️ Timer Panel
-![Timer Panel](./assets/Screenshot 2026-03-22 144627.png)
+![Timer Panel](./assets/timer.png)
+
+### 📝 Notes Panel
+![Notes Panel](./assets/notes.png)
+
+
 
 > Place your images inside an `assets/` folder:
 > - `assets/demo-notes.png`
